@@ -7,7 +7,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from sqlalchemy.orm import Session
 import time
-from . import models, schemas
+from . import models, schemas, utils
 from .database import engine, get_db
 
 
@@ -73,7 +73,7 @@ def createPost(post: schemas.PostCreate, db: Session = Depends(get_db)):
     return new_post
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.Post)
 def getPost(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s""", (str(id)))
     # post = cursor.fetchone()
@@ -84,7 +84,7 @@ def getPost(id: int, db: Session = Depends(get_db)):
                             detail=f"Post with id: {id} was not found")
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return {"message": f"Post with id: {id} was not found"}
-    return {"post_detail": post}
+    return post
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -125,3 +125,27 @@ def updatePost(id: int, updated_post: schemas.PostCreate, db: Session = Depends(
     # post_dict['id'] = id
     # myPosts[index] = post_dict
     return post_query.first()
+
+
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
+def createUser(user: schemas.UserCreate, db: Session = Depends(get_db)):
+
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@app.get("/users/{id}",  response_model=schemas.UserOut)
+def getUser(id: int,  db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with id: {id} does not exist")
+
+    return user
