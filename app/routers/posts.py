@@ -30,8 +30,8 @@ def createPost(post: schemas.PostCreate, db: Session = Depends(get_db),
     #                (post.title, post.content, post.publish))
     # new_post = cursor.fetchone()
     # conn.commit()
-    print(current_user)
-    new_post = models.Post(**post.dict())
+    # print(current_user)
+    new_post = models.Post(user_id=current_user.id, **post.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -64,6 +64,7 @@ def deletePost(id: int, db: Session = Depends(get_db), current_user: int = Depen
     if post.first() == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"post with id: {id} does not exist")
+
     post.delete(synchronize_session=False)
     db.commit()
     # myPosts.pop(index)
